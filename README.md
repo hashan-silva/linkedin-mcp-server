@@ -108,3 +108,6 @@ Ensure the working directory is this repo (or set `cwd` field if supported by yo
 - This is a lightweight JSON-RPC loop for MCP stdio. Validation is minimal; LinkedIn API errors are returned to the caller.
 - Be mindful of LinkedIn API rate limits and scopes (e.g., w_member_social, r_liteprofile, r_emailaddress, etc.).
 - No persistence beyond the LinkedIn API itself.
+
+## Backlog / Future Work
+- Public distribution without exposing secrets: deliver a brokered-token service (you host LinkedIn client secret and issue short-lived access tokens) or a managed MCP endpoint you run. Avoid embedding client secrets in public images or repos.
