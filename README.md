@@ -1,4 +1,5 @@
 # LinkedIn MCP Server (Python, stdio)
+[![SonarCloud analysis](https://github.com/hashan-silva/linkedin-mcp-server/actions/workflows/sonarcloud.yml/badge.svg)](https://github.com/hashan-silva/linkedin-mcp-server/actions/workflows/sonarcloud.yml)
 
 Minimal Model Context Protocol (MCP) server that speaks JSON-over-stdio for use with Codex CLI. It wraps LinkedIn REST endpoints so an agent can manage your profile, experiences, posts, comments, reactions, invitations, and search.
 
