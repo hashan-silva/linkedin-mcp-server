@@ -59,6 +59,14 @@ class LinkedInClient:
         resp.raise_for_status()
         return resp.json()
 
+    def get_primary_email(self) -> Dict[str, Any]:
+        resp = self.session.get(
+            self._url("/v2/emailAddress"),
+            params={"q": "members", "projection": "(elements*(handle~))"},
+        )
+        resp.raise_for_status()
+        return resp.json()
+
     def update_profile(self, update: Dict[str, Any]) -> Dict[str, Any]:
         resp = self.session.patch(self._url("/v2/me"), json=update, headers={"Content-Type": "application/merge-patch+json"})
         resp.raise_for_status()
@@ -119,6 +127,19 @@ class LinkedInClient:
         }
 
         resp = self.session.post(self._url("/v2/ugcPosts"), json=payload)
+        resp.raise_for_status()
+        return resp.json()
+
+    def list_posts(self, count: int = 10, start: int = 0) -> Dict[str, Any]:
+        author = self._ensure_author_urn()
+        params = {
+            "q": "authors",
+            "authors": f"List({author})",
+            "sortBy": "LAST_MODIFIED",
+            "count": count,
+            "start": start,
+        }
+        resp = self.session.get(self._url("/v2/ugcPosts"), params=params)
         resp.raise_for_status()
         return resp.json()
 
