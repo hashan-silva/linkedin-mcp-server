@@ -15,6 +15,13 @@
 - Docker run: `docker run --rm -e LINKEDIN_ACCESS_TOKEN=... linkedin-mcp-server`
 - Docker + OAuth: expose redirect port, pass client creds, and run `python -m src.mcp_server --auth` inside the container.
 
+## MCP Quality Checks (run after every code change)
+- The SonarQube MCP server is already configured via Codex CLI (`docker run --rm -i -e SONARQUBE_TOKEN -e SONARQUBE_ORG mcp/sonarqube`).
+- After editing code, use Codex CLI to query the server and ensure quality gates stay green:
+  - `codex mcp call sonarqube get_project_quality_gate_status '{"projectKey":"hashan-silva_linkedin-mcp-server"}'`
+  - `codex mcp call sonarqube search_sonar_issues_in_projects '{"projects":["hashan.silva:linkedin-mcp-server"],"severities":["HIGH","BLOCKER"]}'`
+- Resolve any reported violations before submitting PRs. Re-run these SonarQube MCP tools until the project is clean.
+
 ## Coding Style & Naming Conventions
 - Language: Python 3.11+. Prefer typing annotations and small, focused functions.
 - Formatting: keep imports grouped stdlib/third-party/local; 4-space indentation.

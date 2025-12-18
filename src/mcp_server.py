@@ -52,10 +52,10 @@ class MCPServer:
                 },
             )
 
-        if method == "list_tools":
+        if method in {"list_tools", "tools/list"}:
             return self._response(request_id, {"tools": self.tools()})
 
-        if method == "call_tool":
+        if method in {"call_tool", "tools/call"}:
             params = message.get("params", {})
             name = params.get("name")
             args = params.get("arguments") or {}
@@ -64,6 +64,7 @@ class MCPServer:
                 return self._response(request_id, {"content": [{"type": "text", "text": json.dumps(result)}]})
             except Exception as exc:  # pragma: no cover - surfaced to client
                 return {
+                    "jsonrpc": "2.0",
                     "id": request_id,
                     "error": {"code": -32000, "message": str(exc)},
                 }
@@ -71,13 +72,18 @@ class MCPServer:
         return None
 
     def _response(self, request_id: Any, result: Any) -> Dict[str, Any]:
-        return {"id": request_id, "result": result}
+        return {"jsonrpc": "2.0", "id": request_id, "result": result}
 
     def tools(self) -> List[Dict[str, Any]]:
         return [
             {
                 "name": "get_profile",
                 "description": "Fetch current profile info (id, names, headline, summary, location, picture).",
+                "inputSchema": {"type": "object", "properties": {}},
+            },
+            {
+                "name": "get_email_address",
+                "description": "Fetch the signed-in member's primary email address.",
                 "inputSchema": {"type": "object", "properties": {}},
             },
             {
@@ -119,6 +125,17 @@ class MCPServer:
                         "author_urn": {"type": "string"},
                         "visibility": {"type": "string", "enum": ["PUBLIC", "CONNECTIONS"]},
                         "media_url": {"type": "string"},
+                    },
+                },
+            },
+            {
+                "name": "list_posts",
+                "description": "List recent UGC posts authored by the signed-in member.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "count": {"type": "integer", "minimum": 1, "maximum": 100},
+                        "start": {"type": "integer", "minimum": 0},
                     },
                 },
             },
@@ -175,6 +192,8 @@ class MCPServer:
     async def invoke_tool(self, name: str, args: Dict[str, Any]) -> Any:
         if name == "get_profile":
             return self.client.get_profile()
+        if name == "get_email_address":
+            return self.client.get_primary_email()
         if name == "update_profile":
             fields = args.get("fields") or {}
             return self.client.update_profile(fields)
@@ -201,6 +220,11 @@ class MCPServer:
                 author_urn=args.get("author_urn"),
                 visibility=args.get("visibility", "PUBLIC"),
                 media_url=args.get("media_url"),
+            )
+        if name == "list_posts":
+            return self.client.list_posts(
+                count=int(args.get("count", 10)),
+                start=int(args.get("start", 0)),
             )
         if name == "comment_on_entity":
             return self.client.comment_on_entity(args["entity_urn"], args["message"])
