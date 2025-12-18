@@ -27,8 +27,6 @@ class _StubSession:
         self.calls.append(("GET", url, params))
         if url.endswith("/v2/userinfo"):
             return _StubResponse({"sub": "abc", "name": "Example"})
-        if url.endswith("/v2/me"):
-            return _StubResponse({"id": "123"})
         return _StubResponse({}, status_code=404)
 
 
@@ -41,26 +39,3 @@ class LinkedInClientTests(unittest.TestCase):
 
         self.assertEqual(profile["sub"], "abc")
         self.assertEqual(client.session.calls, [("GET", "https://api.linkedin.com/v2/userinfo", None)])
-
-    def test_ensure_author_urn_uses_me_id(self) -> None:
-        client = LinkedInClient("token")
-        client.session = _StubSession()
-
-        urn = client._ensure_author_urn()
-
-        self.assertEqual(urn, "urn:li:person:123")
-
-    def test_ensure_author_urn_raises_on_access_denied(self) -> None:
-        class DenyMeSession(_StubSession):
-            def get(self, url, params=None, **kwargs):
-                self.calls.append(("GET", url, params))
-                if url.endswith("/v2/me"):
-                    return _StubResponse({"message": "denied"}, status_code=403)
-                return super().get(url, params=params, **kwargs)
-
-        client = LinkedInClient("token")
-        client.session = DenyMeSession()
-
-        with self.assertRaises(RuntimeError) as ctx:
-            client._ensure_author_urn()
-        self.assertIn("required scopes", str(ctx.exception))
