@@ -76,7 +76,9 @@ class LinkedInClient:
         return resp.json()
 
     def update_profile(self, update: Dict[str, Any]) -> Dict[str, Any]:
-        resp = self.session.patch(self._url("/v2/userinfo"), json=update, headers={"Content-Type": "application/merge-patch+json"})
+        resp = self.session.patch(
+            self._url("/v2/userinfo"), json=update, headers={"Content-Type": "application/merge-patch+json"}
+        )
         self._raise_for_status(resp)
         return resp.json()
 
@@ -181,7 +183,9 @@ class LinkedInClient:
         self._raise_for_status(resp)
         return resp.json()
 
-    def search(self, keywords: str, result_type: str, count: int = 10, start: int = 0, location: Optional[str] = None) -> Dict[str, Any]:
+    def search(
+        self, keywords: str, result_type: str, count: int = 10, start: int = 0, location: Optional[str] = None
+    ) -> Dict[str, Any]:
         params: Dict[str, Any] = {"q": "all", "keywords": keywords, "origin": "MCP", "count": count, "start": start}
         if location:
             params["location"] = location
