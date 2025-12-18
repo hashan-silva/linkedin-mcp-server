@@ -52,10 +52,10 @@ class MCPServer:
                 },
             )
 
-        if method == "list_tools":
+        if method in {"list_tools", "tools/list"}:
             return self._response(request_id, {"tools": self.tools()})
 
-        if method == "call_tool":
+        if method in {"call_tool", "tools/call"}:
             params = message.get("params", {})
             name = params.get("name")
             args = params.get("arguments") or {}
