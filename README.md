@@ -1,19 +1,12 @@
 # LinkedIn MCP Server (Python, stdio)
 [![SonarCloud analysis](https://github.com/hashan-silva/linkedin-mcp-server/actions/workflows/sonarcloud.yml/badge.svg)](https://github.com/hashan-silva/linkedin-mcp-server/actions/workflows/sonarcloud.yml)
 
-Minimal Model Context Protocol (MCP) server that speaks JSON-over-stdio for use with Codex CLI. It wraps LinkedIn REST endpoints so an agent can manage your profile, experiences, posts, comments, reactions, invitations, and search.
+Minimal Model Context Protocol (MCP) server that speaks JSON-over-stdio for use with Codex CLI. It wraps LinkedIn REST endpoints so an agent can fetch your profile.
 
 > You will need a valid LinkedIn OAuth access token with the appropriate scopes. Tokens are **not** handled here; provide them via env vars.
 
 ## Features
-- Get and update profile
-- Fetch your primary email address
-- Create/update experience entries
-- Publish posts with optional media
-- List authored UGC posts
-- Comment and react on feed entities
-- Send connection invitations with a note
-- Search jobs/people/companies
+- Get profile
 
 ## Project layout
 ```
@@ -98,19 +91,10 @@ Ensure the working directory is this repo (or set `cwd` field if supported by yo
 
 ## Exposed tools
 - `get_profile` – fetch current profile
-- `get_email_address` – fetch the signed-in member's primary email address
-- `update_profile` – merge-patch profile; pass `fields` object
-- `upsert_experience` – create/update a position; requires title, company_name, start_year; pass `position_id` to update
-- `create_post` – publish text with optional `media_url`, `visibility`
-- `list_posts` – list recent UGC posts created by the authenticated member; accepts `count`/`start`
-- `comment_on_entity` – comment on entity URN
-- `react_to_entity` – react to entity URN with `LIKE|CELEBRATE|LOVE|INSIGHTFUL|CURIOUS|SUPPORT`
-- `send_invitation` – invite profile URN with optional `message`
-- `search` – search blended results; `result_type` in `JOBS|PEOPLE|COMPANIES`, supports `count/start/location`
 
 ## Notes
 - This is a lightweight JSON-RPC loop for MCP stdio. Validation is minimal; LinkedIn API errors are returned to the caller.
-- Be mindful of LinkedIn API rate limits and scopes (e.g., w_member_social, r_liteprofile, r_emailaddress, etc.).
+- Be mindful of LinkedIn API rate limits and scopes (e.g., r_liteprofile, etc.).
 - No persistence beyond the LinkedIn API itself.
 
 ## Backlog / Future Work

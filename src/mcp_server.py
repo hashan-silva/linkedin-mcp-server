@@ -7,7 +7,7 @@ import time
 import urllib.parse
 from typing import Any, Dict, List, Optional
 
-from .linkedin_client import ExperiencePayload, LinkedInClient
+from .linkedin_client import LinkedInClient
 from .oauth import build_authorize_url, exchange_code_for_token, start_local_redirect_server
 
 
@@ -81,165 +81,11 @@ class MCPServer:
                 "description": "Fetch current profile info (id, names, headline, summary, location, picture).",
                 "inputSchema": {"type": "object", "properties": {}},
             },
-            {
-                "name": "get_email_address",
-                "description": "Fetch the signed-in member's primary email address.",
-                "inputSchema": {"type": "object", "properties": {}},
-            },
-            {
-                "name": "update_profile",
-                "description": "Merge-patch the profile document. Pass only fields to update (e.g. headline, summary, location).",
-                "inputSchema": {"type": "object", "properties": {"fields": {"type": "object"}}},
-            },
-            {
-                "name": "upsert_experience",
-                "description": "Create or update a position experience entry.",
-                "inputSchema": {
-                    "type": "object",
-                    "required": ["title", "company_name", "start_year"],
-                    "properties": {
-                        "position_id": {"type": "string"},
-                        "title": {"type": "string"},
-                        "company_name": {"type": "string"},
-                        "employment_type": {"type": "string"},
-                        "location": {"type": "string"},
-                        "description": {"type": "string"},
-                        "start_year": {"type": "integer"},
-                        "start_month": {"type": "integer"},
-                        "start_day": {"type": "integer"},
-                        "end_year": {"type": "integer"},
-                        "end_month": {"type": "integer"},
-                        "end_day": {"type": "integer"},
-                        "is_current": {"type": "boolean"},
-                    },
-                },
-            },
-            {
-                "name": "create_post",
-                "description": "Publish a post with optional media URL.",
-                "inputSchema": {
-                    "type": "object",
-                    "required": ["text"],
-                    "properties": {
-                        "text": {"type": "string"},
-                        "author_urn": {"type": "string"},
-                        "visibility": {"type": "string", "enum": ["PUBLIC", "CONNECTIONS"]},
-                        "media_url": {"type": "string"},
-                    },
-                },
-            },
-            {
-                "name": "list_posts",
-                "description": "List recent UGC posts authored by the signed-in member.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "count": {"type": "integer", "minimum": 1, "maximum": 100},
-                        "start": {"type": "integer", "minimum": 0},
-                    },
-                },
-            },
-            {
-                "name": "comment_on_entity",
-                "description": "Add a comment to a post/ugc entity by URN.",
-                "inputSchema": {
-                    "type": "object",
-                    "required": ["entity_urn", "message"],
-                    "properties": {"entity_urn": {"type": "string"}, "message": {"type": "string"}},
-                },
-            },
-            {
-                "name": "react_to_entity",
-                "description": "React to a post/ugc entity by URN with a reaction type.",
-                "inputSchema": {
-                    "type": "object",
-                    "required": ["entity_urn", "reaction_type"],
-                    "properties": {
-                        "entity_urn": {"type": "string"},
-                        "reaction_type": {
-                            "type": "string",
-                            "enum": ["LIKE", "CELEBRATE", "LOVE", "INSIGHTFUL", "CURIOUS", "SUPPORT"],
-                        },
-                    },
-                },
-            },
-            {
-                "name": "send_invitation",
-                "description": "Send a connection invite to a profile URN with optional note.",
-                "inputSchema": {
-                    "type": "object",
-                    "required": ["profile_urn"],
-                    "properties": {"profile_urn": {"type": "string"}, "message": {"type": "string"}},
-                },
-            },
-            {
-                "name": "search",
-                "description": "Search LinkedIn blended results for jobs, people, or companies.",
-                "inputSchema": {
-                    "type": "object",
-                    "required": ["keywords", "result_type"],
-                    "properties": {
-                        "keywords": {"type": "string"},
-                        "result_type": {"type": "string", "enum": ["JOBS", "PEOPLE", "COMPANIES"]},
-                        "count": {"type": "integer"},
-                        "start": {"type": "integer"},
-                        "location": {"type": "string"},
-                    },
-                },
-            },
         ]
 
     async def invoke_tool(self, name: str, args: Dict[str, Any]) -> Any:
         if name == "get_profile":
             return self.client.get_profile()
-        if name == "get_email_address":
-            return self.client.get_primary_email()
-        if name == "update_profile":
-            fields = args.get("fields") or {}
-            return self.client.update_profile(fields)
-        if name == "upsert_experience":
-            exp = ExperiencePayload(
-                position_id=args.get("position_id"),
-                title=args["title"],
-                company_name=args["company_name"],
-                employment_type=args.get("employment_type"),
-                location=args.get("location"),
-                description=args.get("description"),
-                start_year=args.get("start_year"),
-                start_month=args.get("start_month"),
-                start_day=args.get("start_day"),
-                end_year=args.get("end_year"),
-                end_month=args.get("end_month"),
-                end_day=args.get("end_day"),
-                is_current=bool(args.get("is_current")),
-            )
-            return self.client.upsert_experience(exp)
-        if name == "create_post":
-            return self.client.create_post(
-                text=args["text"],
-                author_urn=args.get("author_urn"),
-                visibility=args.get("visibility", "PUBLIC"),
-                media_url=args.get("media_url"),
-            )
-        if name == "list_posts":
-            return self.client.list_posts(
-                count=int(args.get("count", 10)),
-                start=int(args.get("start", 0)),
-            )
-        if name == "comment_on_entity":
-            return self.client.comment_on_entity(args["entity_urn"], args["message"])
-        if name == "react_to_entity":
-            return self.client.react_to_entity(args["entity_urn"], args["reaction_type"])
-        if name == "send_invitation":
-            return self.client.send_invitation(args["profile_urn"], args.get("message"))
-        if name == "search":
-            return self.client.search(
-                keywords=args["keywords"],
-                result_type=args.get("result_type"),
-                count=args.get("count", 10),
-                start=args.get("start", 0),
-                location=args.get("location"),
-            )
         raise ValueError(f"Unknown tool: {name}")
 
 
