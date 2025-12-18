@@ -63,13 +63,7 @@ class LinkedInClient:
         return str(member_id)
 
     def get_profile(self) -> Dict[str, Any]:
-        resp = self.session.get(
-            self._url("/v2/userinfo"),
-            params=
-            {
-                "projection": "(id,localizedFirstName,localizedLastName,vanityName,headline,industryName,summary,locationName,profilePicture(displayImage~:playableStreams))"
-            },
-        )
+        resp = self.session.get(self._url("/v2/userinfo"))
         self._raise_for_status(resp)
         return resp.json()
 
