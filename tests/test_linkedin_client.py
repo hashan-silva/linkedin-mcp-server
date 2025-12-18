@@ -1,3 +1,5 @@
+import unittest
+
 import requests
 
 from src.linkedin_client import LinkedInClient
@@ -30,38 +32,35 @@ class _StubSession:
         return _StubResponse({}, status_code=404)
 
 
-def test_get_profile_calls_userinfo_without_projection():
-    client = LinkedInClient("token")
-    client.session = _StubSession()
+class LinkedInClientTests(unittest.TestCase):
+    def test_get_profile_calls_userinfo_without_projection(self) -> None:
+        client = LinkedInClient("token")
+        client.session = _StubSession()
 
-    profile = client.get_profile()
+        profile = client.get_profile()
 
-    assert profile["sub"] == "abc"
-    assert client.session.calls == [("GET", "https://api.linkedin.com/v2/userinfo", None)]
+        self.assertEqual(profile["sub"], "abc")
+        self.assertEqual(client.session.calls, [("GET", "https://api.linkedin.com/v2/userinfo", None)])
 
+    def test_ensure_author_urn_uses_me_id(self) -> None:
+        client = LinkedInClient("token")
+        client.session = _StubSession()
 
-def test_ensure_author_urn_uses_me_id():
-    client = LinkedInClient("token")
-    client.session = _StubSession()
+        urn = client._ensure_author_urn()
 
-    urn = client._ensure_author_urn()
+        self.assertEqual(urn, "urn:li:person:123")
 
-    assert urn == "urn:li:person:123"
+    def test_ensure_author_urn_raises_on_access_denied(self) -> None:
+        class DenyMeSession(_StubSession):
+            def get(self, url, params=None, **kwargs):
+                self.calls.append(("GET", url, params))
+                if url.endswith("/v2/me"):
+                    return _StubResponse({"message": "denied"}, status_code=403)
+                return super().get(url, params=params, **kwargs)
 
+        client = LinkedInClient("token")
+        client.session = DenyMeSession()
 
-def test_ensure_author_urn_raises_on_access_denied():
-    class DenyMeSession(_StubSession):
-        def get(self, url, params=None, **kwargs):
-            self.calls.append(("GET", url, params))
-            if url.endswith("/v2/me"):
-                return _StubResponse({"message": "denied"}, status_code=403)
-            return super().get(url, params=params, **kwargs)
-
-    client = LinkedInClient("token")
-    client.session = DenyMeSession()
-
-    try:
-        client._ensure_author_urn()
-        assert False, "expected RuntimeError"
-    except RuntimeError as exc:
-        assert "required scopes" in str(exc)
+        with self.assertRaises(RuntimeError) as ctx:
+            client._ensure_author_urn()
+        self.assertIn("required scopes", str(ctx.exception))
