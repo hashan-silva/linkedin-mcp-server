@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 import requests
+from requests import Response
 
 
 @dataclass
@@ -24,6 +25,11 @@ class ExperiencePayload:
 
 class LinkedInClient:
     def __init__(self, access_token: str, base_url: str = "https://api.linkedin.com") -> None:
+        if not access_token or not access_token.strip():
+            raise RuntimeError(
+                "LinkedIn access token is missing. Set LINKEDIN_ACCESS_TOKEN or run `python -m src.mcp_server --auth`."
+            )
+
         self.base_url = base_url.rstrip("/")
         self.session = requests.Session()
         self.session.headers.update(
@@ -42,21 +48,23 @@ class LinkedInClient:
         if self._cached_author_urn:
             return self._cached_author_urn
 
-        profile = self.get_profile()
-        profile_id = profile.get("id")
-        urn = profile_id if str(profile_id).startswith("urn:li:person") else f"urn:li:person:{profile_id}"
+        member_id = self._get_member_id()
+        urn = member_id if member_id.startswith("urn:li:person") else f"urn:li:person:{member_id}"
         self._cached_author_urn = urn
         return urn
 
+    def _get_member_id(self) -> str:
+        resp = self.session.get(self._url("/v2/me"), params={"projection": "(id)"})
+        self._raise_for_status(resp)
+        profile = resp.json()
+        member_id = profile.get("id")
+        if not member_id:
+            raise RuntimeError("LinkedIn did not return a member id from /v2/me.")
+        return str(member_id)
+
     def get_profile(self) -> Dict[str, Any]:
-        resp = self.session.get(
-            self._url("/v2/me"),
-            params=
-            {
-                "projection": "(id,localizedFirstName,localizedLastName,vanityName,headline,industryName,summary,locationName,profilePicture(displayImage~:playableStreams))"
-            },
-        )
-        resp.raise_for_status()
+        resp = self.session.get(self._url("/v2/userinfo"))
+        self._raise_for_status(resp)
         return resp.json()
 
     def get_primary_email(self) -> Dict[str, Any]:
@@ -64,12 +72,16 @@ class LinkedInClient:
             self._url("/v2/emailAddress"),
             params={"q": "members", "projection": "(elements*(handle~))"},
         )
-        resp.raise_for_status()
+        self._raise_for_status(resp)
         return resp.json()
 
     def update_profile(self, update: Dict[str, Any]) -> Dict[str, Any]:
-        resp = self.session.patch(self._url("/v2/me"), json=update, headers={"Content-Type": "application/merge-patch+json"})
-        resp.raise_for_status()
+        resp = self.session.patch(
+            self._url("/v2/me"),
+            json=update,
+            headers={"Content-Type": "application/merge-patch+json"},
+        )
+        self._raise_for_status(resp)
         return resp.json()
 
     def upsert_experience(self, exp: ExperiencePayload) -> Dict[str, Any]:
@@ -95,7 +107,7 @@ class LinkedInClient:
         else:
             resp = self.session.post(self._url("/v2/positions"), json=payload)
 
-        resp.raise_for_status()
+        self._raise_for_status(resp)
         return resp.json()
 
     def create_post(
@@ -127,7 +139,7 @@ class LinkedInClient:
         }
 
         resp = self.session.post(self._url("/v2/ugcPosts"), json=payload)
-        resp.raise_for_status()
+        self._raise_for_status(resp)
         return resp.json()
 
     def list_posts(self, count: int = 10, start: int = 0) -> Dict[str, Any]:
@@ -140,7 +152,7 @@ class LinkedInClient:
             "start": start,
         }
         resp = self.session.get(self._url("/v2/ugcPosts"), params=params)
-        resp.raise_for_status()
+        self._raise_for_status(resp)
         return resp.json()
 
     def comment_on_entity(self, entity_urn: str, message: str) -> Dict[str, Any]:
@@ -150,7 +162,7 @@ class LinkedInClient:
             self._url(f"/v2/socialActions/{encoded}/comments"),
             json={"actor": actor, "message": {"text": message}},
         )
-        resp.raise_for_status()
+        self._raise_for_status(resp)
         return resp.json()
 
     def react_to_entity(self, entity_urn: str, reaction_type: str) -> Dict[str, Any]:
@@ -160,7 +172,7 @@ class LinkedInClient:
             self._url(f"/v2/socialActions/{encoded}/likes"),
             json={"actor": actor, "reactionType": reaction_type},
         )
-        resp.raise_for_status()
+        self._raise_for_status(resp)
         return resp.json()
 
     def send_invitation(self, profile_urn: str, message: Optional[str] = None) -> Dict[str, Any]:
@@ -170,15 +182,34 @@ class LinkedInClient:
             "message": message,
         }
         resp = self.session.post(self._url("/v2/invitations"), json=payload)
-        resp.raise_for_status()
+        self._raise_for_status(resp)
         return resp.json()
 
-    def search(self, keywords: str, result_type: str, count: int = 10, start: int = 0, location: Optional[str] = None) -> Dict[str, Any]:
+    def search(
+        self,
+        keywords: str,
+        result_type: str,
+        count: int = 10,
+        start: int = 0,
+        location: Optional[str] = None,
+    ) -> Dict[str, Any]:
         params: Dict[str, Any] = {"q": "all", "keywords": keywords, "origin": "MCP", "count": count, "start": start}
         if location:
             params["location"] = location
         if result_type:
             params["filters"] = f"resultType-{result_type}"
         resp = self.session.get(self._url("/v2/search/blended"), params=params)
-        resp.raise_for_status()
+        self._raise_for_status(resp)
         return resp.json()
+
+    def _raise_for_status(self, resp: Response) -> None:
+        try:
+            resp.raise_for_status()
+        except requests.HTTPError as exc:
+            if resp.status_code in {401, 403}:
+                raise RuntimeError(
+                    "LinkedIn rejected the request "
+                    f"(status {resp.status_code}). Ensure LINKEDIN_ACCESS_TOKEN is valid and has the required scopes, "
+                    "or re-run `python -m src.mcp_server --auth` to refresh it."
+                ) from exc
+            raise
