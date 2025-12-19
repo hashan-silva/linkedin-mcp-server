@@ -29,6 +29,12 @@ class _StubSession:
             return _StubResponse({"sub": "abc", "name": "Example"})
         return _StubResponse({}, status_code=404)
 
+    def post(self, url, json=None, headers=None, **kwargs):
+        self.calls.append(("POST", url, json, headers or {}))
+        if url.endswith("/rest/posts"):
+            return _StubResponse({"id": "post-123"})
+        return _StubResponse({}, status_code=404)
+
 
 class LinkedInClientTests(unittest.TestCase):
     def test_get_profile_calls_userinfo_without_projection(self) -> None:
@@ -39,3 +45,36 @@ class LinkedInClientTests(unittest.TestCase):
 
         self.assertEqual(profile["sub"], "abc")
         self.assertEqual(client.session.calls, [("GET", "https://api.linkedin.com/v2/userinfo", None)])
+
+    def test_create_post_calls_posts_endpoint_with_defaults(self) -> None:
+        client = LinkedInClient("token")
+        client.session = _StubSession()
+
+        response = client.create_post(
+            author="urn:li:person:abc",
+            commentary="Hello world",
+        )
+
+        self.assertEqual(response["id"], "post-123")
+        self.assertEqual(
+            client.session.calls,
+            [
+                (
+                    "POST",
+                    "https://api.linkedin.com/rest/posts",
+                    {
+                        "author": "urn:li:person:abc",
+                        "commentary": "Hello world",
+                        "visibility": "PUBLIC",
+                        "distribution": {
+                            "feedDistribution": "MAIN_FEED",
+                            "targetEntities": [],
+                            "thirdPartyDistributionChannels": [],
+                        },
+                        "lifecycleState": "PUBLISHED",
+                        "isReshareDisabledByAuthor": False,
+                    },
+                    {"LinkedIn-Version": "202502"},
+                )
+            ],
+        )
