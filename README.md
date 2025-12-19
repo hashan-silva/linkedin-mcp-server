@@ -1,5 +1,6 @@
 # LinkedIn MCP Server (Python, stdio)
 [![SonarCloud analysis](https://github.com/hashan-silva/linkedin-mcp-server/actions/workflows/sonarcloud.yml/badge.svg)](https://github.com/hashan-silva/linkedin-mcp-server/actions/workflows/sonarcloud.yml)
+[![Docker publish](https://github.com/hashan-silva/linkedin-mcp-server/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/hashan-silva/linkedin-mcp-server/actions/workflows/docker-publish.yml)
 
 Minimal Model Context Protocol (MCP) server that speaks JSON-over-stdio for use with Codex CLI. It wraps LinkedIn REST endpoints so an agent can fetch your profile.
 
@@ -99,3 +100,4 @@ Ensure the working directory is this repo (or set `cwd` field if supported by yo
 
 ## Backlog / Future Work
 - Public distribution without exposing secrets: deliver a brokered-token service (you host LinkedIn client secret and issue short-lived access tokens) or a managed MCP endpoint you run. Avoid embedding client secrets in public images or repos.
+
