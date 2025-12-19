@@ -81,11 +81,41 @@ class MCPServer:
                 "description": "Fetch current profile info (id, names, headline, summary, location, picture).",
                 "inputSchema": {"type": "object", "properties": {}},
             },
+            {
+                "name": "create_post",
+                "description": "Create a LinkedIn post using the Posts API.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "author": {"type": "string", "description": "Author URN (e.g., urn:li:person:...)." },
+                        "commentary": {"type": "string", "description": "Post text."},
+                        "visibility": {"type": "string", "description": "Visibility (e.g., PUBLIC)."},
+                        "distribution": {"type": "object", "description": "Distribution settings for the post."},
+                        "lifecycleState": {"type": "string", "description": "Lifecycle state (e.g., PUBLISHED)."},
+                        "isReshareDisabledByAuthor": {
+                            "type": "boolean",
+                            "description": "Disable reshares by the author.",
+                        },
+                        "linkedinVersion": {"type": "string", "description": "LinkedIn API version header."},
+                    },
+                    "required": ["author", "commentary"],
+                },
+            },
         ]
 
     async def invoke_tool(self, name: str, args: Dict[str, Any]) -> Any:
         if name == "get_profile":
             return self.client.get_profile()
+        if name == "create_post":
+            return self.client.create_post(
+                author=args.get("author", ""),
+                commentary=args.get("commentary", ""),
+                visibility=args.get("visibility", "PUBLIC"),
+                distribution=args.get("distribution"),
+                lifecycle_state=args.get("lifecycleState", "PUBLISHED"),
+                is_reshare_disabled_by_author=args.get("isReshareDisabledByAuthor", False),
+                linkedin_version=args.get("linkedinVersion", "202502"),
+            )
         raise ValueError(f"Unknown tool: {name}")
 
 

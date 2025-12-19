@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import requests
 from requests import Response
@@ -28,6 +28,48 @@ class LinkedInClient:
         resp = self.session.get(self._url("/v2/userinfo"))
         self._raise_for_status(resp)
         return resp.json()
+
+    def create_post(
+        self,
+        author: str,
+        commentary: str,
+        visibility: str = "PUBLIC",
+        distribution: Optional[Dict[str, Any]] = None,
+        lifecycle_state: str = "PUBLISHED",
+        is_reshare_disabled_by_author: bool = False,
+        linkedin_version: str = "202502",
+    ) -> Dict[str, Any]:
+        author_value = author.strip() if author else ""
+        commentary_value = commentary.strip() if commentary else ""
+        if not author_value:
+            raise ValueError("author is required")
+        if not commentary_value:
+            raise ValueError("commentary is required")
+
+        payload = {
+            "author": author_value,
+            "commentary": commentary_value,
+            "visibility": visibility,
+            "distribution": distribution
+            or {
+                "feedDistribution": "MAIN_FEED",
+                "targetEntities": [],
+                "thirdPartyDistributionChannels": [],
+            },
+            "lifecycleState": lifecycle_state,
+            "isReshareDisabledByAuthor": is_reshare_disabled_by_author,
+        }
+
+        resp = self.session.post(
+            self._url("/rest/posts"),
+            json=payload,
+            headers={"LinkedIn-Version": linkedin_version},
+        )
+        self._raise_for_status(resp)
+        try:
+            return resp.json()
+        except ValueError:
+            return {"status": resp.status_code}
 
     def _raise_for_status(self, resp: Response) -> None:
         try:

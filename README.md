@@ -8,6 +8,7 @@ Minimal Model Context Protocol (MCP) server that speaks JSON-over-stdio for use 
 
 ## Features
 - Get profile
+- Create post
 
 ## Project layout
 ```
@@ -92,6 +93,7 @@ Ensure the working directory is this repo (or set `cwd` field if supported by yo
 
 ## Exposed tools
 - `get_profile` – fetch current profile
+- `create_post` – create a LinkedIn post
 
 ## Notes
 - This is a lightweight JSON-RPC loop for MCP stdio. Validation is minimal; LinkedIn API errors are returned to the caller.
