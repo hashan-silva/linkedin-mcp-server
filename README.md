@@ -9,6 +9,7 @@ Minimal Model Context Protocol (MCP) server that speaks JSON-over-stdio for use 
 ## Features
 - Get profile
 - Create post
+- Create article post
 
 ## Project layout
 ```
@@ -74,26 +75,20 @@ docker run --rm \
 Open the printed URL, approve, and the container will start the MCP server with the token.
 
 ## Codex CLI config (stdio server)
-Add to your `~/.config/codex/mcp.json` (adjust paths as needed):
-```json
-{
-  "servers": {
-    "linkedin": {
-      "command": "python",
-      "args": ["-m", "src.mcp_server"],          // or ["-m", "src.mcp_server", "--auth"] to drive OAuth
-      "env": {
-        "LINKEDIN_ACCESS_TOKEN": "<your-token>",
-        "LINKEDIN_BASE_URL": "https://api.linkedin.com"
-      }
-    }
-  }
-}
+Add to your `~/.codex/config.toml` (adjust paths as needed):
+```toml
+[mcp_servers.linkedin]
+command = "docker"
+args = ["run", "--rm","-i","-e","LINKEDIN_ACCESS_TOKEN", "hashan0314/linkedin-mcp-server"]
+env = {"LINKEDIN_ACCESS_TOKEN"="<your_token>"}
+startup_timeout_ms = 30000
 ```
-Ensure the working directory is this repo (or set `cwd` field if supported by your CLI).
+Ensure the working directory is this repo (or set `cwd` if supported by your CLI).
 
 ## Exposed tools
 - `get_profile` – fetch current profile
 - `create_post` – create a LinkedIn post
+- `create_article_post` – create a LinkedIn article post with a link
 
 ## Notes
 - This is a lightweight JSON-RPC loop for MCP stdio. Validation is minimal; LinkedIn API errors are returned to the caller.
