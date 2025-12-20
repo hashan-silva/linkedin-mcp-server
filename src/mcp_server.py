@@ -101,6 +101,31 @@ class MCPServer:
                     "required": ["author", "commentary"],
                 },
             },
+            {
+                "name": "create_article_post",
+                "description": "Create a LinkedIn article post with an external article link.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "author": {"type": "string", "description": "Author URN (e.g., urn:li:person:...)." },
+                        "commentary": {"type": "string", "description": "Post text."},
+                        "articleSource": {"type": "string", "description": "Article URL."},
+                        "articleTitle": {"type": "string", "description": "Article title."},
+                        "articleDescription": {"type": "string", "description": "Article description."},
+                        "visibility": {"type": "string", "description": "Visibility (e.g., PUBLIC)."},
+                        "distribution": {"type": "object", "description": "Distribution settings for the post."},
+                        "lifecycleState": {"type": "string", "description": "Lifecycle state (e.g., PUBLISHED)."},
+                        "linkedinVersion": {"type": "string", "description": "LinkedIn API version header."},
+                    },
+                    "required": [
+                        "author",
+                        "commentary",
+                        "articleSource",
+                        "articleTitle",
+                        "articleDescription",
+                    ],
+                },
+            },
         ]
 
     async def invoke_tool(self, name: str, args: Dict[str, Any]) -> Any:
@@ -114,6 +139,18 @@ class MCPServer:
                 distribution=args.get("distribution"),
                 lifecycle_state=args.get("lifecycleState", "PUBLISHED"),
                 is_reshare_disabled_by_author=args.get("isReshareDisabledByAuthor", False),
+                linkedin_version=args.get("linkedinVersion", "202502"),
+            )
+        if name == "create_article_post":
+            return self.client.create_article_post(
+                author=args.get("author", ""),
+                commentary=args.get("commentary", ""),
+                article_source=args.get("articleSource", ""),
+                article_title=args.get("articleTitle", ""),
+                article_description=args.get("articleDescription", ""),
+                visibility=args.get("visibility", "PUBLIC"),
+                distribution=args.get("distribution"),
+                lifecycle_state=args.get("lifecycleState", "PUBLISHED"),
                 linkedin_version=args.get("linkedinVersion", "202502"),
             )
         raise ValueError(f"Unknown tool: {name}")
