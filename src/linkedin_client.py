@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import requests
@@ -25,7 +26,10 @@ class LinkedInClient:
         return f"{self.base_url}{path}"
 
     def get_profile(self) -> Dict[str, Any]:
-        resp = self.session.get(self._url("/v2/userinfo"))
+        resp = self.session.get(
+            self._url("/rest/identityMe"),
+            headers={"LinkedIn-Version": "202510.03"},
+        )
         self._raise_for_status(resp)
         return resp.json()
 
@@ -80,6 +84,153 @@ class LinkedInClient:
             visibility=visibility,
             lifecycle_state=lifecycle_state,
             distribution=distribution,
+        )
+
+        resp = self.session.post(
+            self._url("/rest/posts"),
+            json=payload,
+            headers={"LinkedIn-Version": linkedin_version},
+        )
+        self._raise_for_status(resp)
+        try:
+            return resp.json()
+        except ValueError:
+            return {"status": resp.status_code}
+
+    def get_verification_report(self, linkedin_version: str = "202510") -> Dict[str, Any]:
+        resp = self.session.get(
+            self._url("/rest/verificationReport"),
+            headers={"LinkedIn-Version": linkedin_version},
+        )
+        self._raise_for_status(resp)
+        return resp.json()
+
+    def get_userinfo(self, linkedin_version: str = "202502") -> Dict[str, Any]:
+        resp = self.session.get(
+            self._url("/v2/userinfo"),
+            headers={"LinkedIn-Version": linkedin_version},
+        )
+        self._raise_for_status(resp)
+        return resp.json()
+
+    def create_reshare(
+        self,
+        author: str,
+        parent: str,
+        commentary: str = "",
+        visibility: str = "PUBLIC",
+        distribution: Optional[Dict[str, Any]] = None,
+        lifecycle_state: str = "PUBLISHED",
+        is_reshare_disabled_by_author: bool = False,
+        linkedin_version: str = "202401",
+    ) -> Dict[str, Any]:
+        payload = self._build_reshare_payload(
+            author=author,
+            parent=parent,
+            commentary=commentary,
+            visibility=visibility,
+            distribution=distribution,
+            lifecycle_state=lifecycle_state,
+            is_reshare_disabled_by_author=is_reshare_disabled_by_author,
+        )
+
+        resp = self.session.post(
+            self._url("/rest/posts"),
+            json=payload,
+            headers={"LinkedIn-Version": linkedin_version},
+        )
+        self._raise_for_status(resp)
+        try:
+            return resp.json()
+        except ValueError:
+            return {"status": resp.status_code}
+
+    def initialize_image_upload(
+        self, owner: str, linkedin_version: str = "202401"
+    ) -> Dict[str, Any]:
+        owner_value = owner.strip() if owner else ""
+        if not owner_value:
+            raise ValueError("owner is required")
+
+        resp = self.session.post(
+            self._url("/rest/images?action=initializeUpload"),
+            json={"initializeUploadRequest": {"owner": owner_value}},
+            headers={"LinkedIn-Version": linkedin_version},
+        )
+        self._raise_for_status(resp)
+        return resp.json()
+
+    def upload_image_binary(self, upload_url: str, file_path: str) -> Dict[str, Any]:
+        url_value = upload_url.strip() if upload_url else ""
+        if not url_value:
+            raise ValueError("upload_url is required")
+        path = Path(file_path)
+        if not path.is_file():
+            raise ValueError(f"file_path not found: {file_path}")
+
+        with path.open("rb") as handle:
+            resp = requests.put(
+                url_value,
+                data=handle,
+                headers={"Content-Type": "application/octet-stream"},
+            )
+        self._raise_for_status(resp)
+        if resp.text:
+            try:
+                return resp.json()
+            except ValueError:
+                return {"status": resp.status_code, "body": resp.text}
+        return {"status": resp.status_code}
+
+    def create_image_post(
+        self,
+        author: str,
+        image_urn: str,
+        commentary: str,
+        alt_text: str = "",
+        visibility: str = "PUBLIC",
+        lifecycle_state: str = "PUBLISHED",
+        linkedin_version: str = "202401",
+    ) -> Dict[str, Any]:
+        payload = self._build_image_post_payload(
+            author=author,
+            image_urn=image_urn,
+            commentary=commentary,
+            alt_text=alt_text,
+            visibility=visibility,
+            lifecycle_state=lifecycle_state,
+        )
+
+        resp = self.session.post(
+            self._url("/rest/posts"),
+            json=payload,
+            headers={"LinkedIn-Version": linkedin_version},
+        )
+        self._raise_for_status(resp)
+        try:
+            return resp.json()
+        except ValueError:
+            return {"status": resp.status_code}
+
+    def create_multi_image_post(
+        self,
+        author: str,
+        images: list[Dict[str, str]],
+        commentary: str,
+        visibility: str = "PUBLIC",
+        distribution: Optional[Dict[str, Any]] = None,
+        lifecycle_state: str = "PUBLISHED",
+        is_reshare_disabled_by_author: bool = False,
+        linkedin_version: str = "202511",
+    ) -> Dict[str, Any]:
+        payload = self._build_multi_image_post_payload(
+            author=author,
+            images=images,
+            commentary=commentary,
+            visibility=visibility,
+            distribution=distribution,
+            lifecycle_state=lifecycle_state,
+            is_reshare_disabled_by_author=is_reshare_disabled_by_author,
         )
 
         resp = self.session.post(
@@ -164,6 +315,123 @@ class LinkedInClient:
                 }
             },
             "distribution": distribution or {"feedDistribution": "MAIN_FEED"},
+        }
+
+    def _build_reshare_payload(
+        self,
+        author: str,
+        parent: str,
+        commentary: str,
+        visibility: str,
+        distribution: Optional[Dict[str, Any]],
+        lifecycle_state: str,
+        is_reshare_disabled_by_author: bool,
+    ) -> Dict[str, Any]:
+        author_value = author.strip() if author else ""
+        parent_value = parent.strip() if parent else ""
+        if not author_value:
+            raise ValueError("author is required")
+        if not parent_value:
+            raise ValueError("parent is required")
+
+        payload: Dict[str, Any] = {
+            "author": author_value,
+            "visibility": visibility,
+            "distribution": distribution
+            or {
+                "feedDistribution": "MAIN_FEED",
+                "targetEntities": [],
+                "thirdPartyDistributionChannels": [],
+            },
+            "lifecycleState": lifecycle_state,
+            "isReshareDisabledByAuthor": is_reshare_disabled_by_author,
+            "reshareContext": {"parent": parent_value},
+        }
+        commentary_value = commentary.strip() if commentary else ""
+        if commentary_value:
+            payload["commentary"] = commentary_value
+        return payload
+
+    def _build_image_post_payload(
+        self,
+        author: str,
+        image_urn: str,
+        commentary: str,
+        alt_text: str,
+        visibility: str,
+        lifecycle_state: str,
+    ) -> Dict[str, Any]:
+        author_value = author.strip() if author else ""
+        image_value = image_urn.strip() if image_urn else ""
+        commentary_value = commentary.strip() if commentary else ""
+        if not author_value:
+            raise ValueError("author is required")
+        if not image_value:
+            raise ValueError("image_urn is required")
+        if not commentary_value:
+            raise ValueError("commentary is required")
+
+        media: Dict[str, Any] = {"id": image_value}
+        alt_value = alt_text.strip() if alt_text else ""
+        if alt_value:
+            media["altText"] = alt_value
+
+        return {
+            "author": author_value,
+            "commentary": commentary_value,
+            "visibility": visibility,
+            "lifecycleState": lifecycle_state,
+            "distribution": {
+                "feedDistribution": "MAIN_FEED",
+                "targetEntities": [],
+                "thirdPartyDistributionChannels": [],
+            },
+            "content": {"media": media},
+        }
+
+    def _build_multi_image_post_payload(
+        self,
+        author: str,
+        images: list[Dict[str, str]],
+        commentary: str,
+        visibility: str,
+        distribution: Optional[Dict[str, Any]],
+        lifecycle_state: str,
+        is_reshare_disabled_by_author: bool,
+    ) -> Dict[str, Any]:
+        author_value = author.strip() if author else ""
+        commentary_value = commentary.strip() if commentary else ""
+        if not author_value:
+            raise ValueError("author is required")
+        if not commentary_value:
+            raise ValueError("commentary is required")
+        if not images:
+            raise ValueError("images is required")
+
+        image_items: list[Dict[str, str]] = []
+        for image in images:
+            image_id = (image.get("id") or "").strip()
+            if not image_id:
+                raise ValueError("image id is required")
+            item: Dict[str, str] = {"id": image_id}
+            alt_text = (image.get("altText") or "").strip()
+            if alt_text:
+                item["altText"] = alt_text
+            image_items.append(item)
+
+        return {
+            "author": author_value,
+            "commentary": commentary_value,
+            "visibility": visibility,
+            "distribution": distribution
+            or {
+                "feedDistribution": "MAIN_FEED",
+                "targetEntities": [],
+                "thirdPartyDistributionChannels": [],
+            },
+            "lifecycleState": lifecycle_state,
+            "isReshareDisabledByAuthor": is_reshare_disabled_by_author,
+            "content": {"multiImage": {"images": image_items}},
         }
 
     def _raise_for_status(self, resp: Response) -> None:

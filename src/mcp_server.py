@@ -82,8 +82,8 @@ class MCPServer:
                 "inputSchema": {"type": "object", "properties": {}},
             },
             {
-                "name": "create_post",
-                "description": "Create a LinkedIn post using the Posts API.",
+                "name": "create_text_post",
+                "description": "Create a text-only LinkedIn post using the Posts API.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -99,6 +99,100 @@ class MCPServer:
                         "linkedinVersion": {"type": "string", "description": "LinkedIn API version header."},
                     },
                     "required": ["author", "commentary"],
+                },
+            },
+            {
+                "name": "create_reshare",
+                "description": "Create a reshare of an existing LinkedIn post.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "author": {"type": "string", "description": "Author URN (e.g., urn:li:person:...)." },
+                        "parent": {"type": "string", "description": "Parent share URN (e.g., urn:li:share:...)." },
+                        "commentary": {"type": "string", "description": "Optional commentary text."},
+                        "visibility": {"type": "string", "description": "Visibility (e.g., PUBLIC)."},
+                        "distribution": {"type": "object", "description": "Distribution settings for the post."},
+                        "lifecycleState": {"type": "string", "description": "Lifecycle state (e.g., PUBLISHED)."},
+                        "isReshareDisabledByAuthor": {
+                            "type": "boolean",
+                            "description": "Disable reshares by the author.",
+                        },
+                        "linkedinVersion": {"type": "string", "description": "LinkedIn API version header."},
+                    },
+                    "required": ["author", "parent"],
+                },
+            },
+            {
+                "name": "initialize_image_upload",
+                "description": "Register an image upload and return the image URN and upload URL.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "owner": {"type": "string", "description": "Owner URN (e.g., urn:li:person:...)." },
+                        "linkedinVersion": {"type": "string", "description": "LinkedIn API version header."},
+                    },
+                    "required": ["owner"],
+                },
+            },
+            {
+                "name": "upload_image_binary",
+                "description": "Upload an image binary to the provided upload URL.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "uploadUrl": {"type": "string", "description": "Upload URL from initialize upload response."},
+                        "filePath": {"type": "string", "description": "Local image file path."},
+                    },
+                    "required": ["uploadUrl", "filePath"],
+                },
+            },
+            {
+                "name": "create_image_post",
+                "description": "Create a LinkedIn post with a single uploaded image.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "author": {"type": "string", "description": "Author URN (e.g., urn:li:person:...)." },
+                        "imageUrn": {"type": "string", "description": "Image URN from initialize upload."},
+                        "commentary": {"type": "string", "description": "Post text."},
+                        "altText": {"type": "string", "description": "Optional alternative text for the image."},
+                        "visibility": {"type": "string", "description": "Visibility (e.g., PUBLIC)."},
+                        "lifecycleState": {"type": "string", "description": "Lifecycle state (e.g., PUBLISHED)."},
+                        "linkedinVersion": {"type": "string", "description": "LinkedIn API version header."},
+                    },
+                    "required": ["author", "imageUrn", "commentary"],
+                },
+            },
+            {
+                "name": "create_multi_image_post",
+                "description": "Create a LinkedIn post with multiple uploaded images.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "author": {"type": "string", "description": "Author URN (e.g., urn:li:person:...)." },
+                        "images": {
+                            "type": "array",
+                            "description": "Images to attach with optional alt text.",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {"type": "string", "description": "Image URN."},
+                                    "altText": {"type": "string", "description": "Optional alternative text."},
+                                },
+                                "required": ["id"],
+                            },
+                        },
+                        "commentary": {"type": "string", "description": "Post text."},
+                        "visibility": {"type": "string", "description": "Visibility (e.g., PUBLIC)."},
+                        "distribution": {"type": "object", "description": "Distribution settings for the post."},
+                        "lifecycleState": {"type": "string", "description": "Lifecycle state (e.g., PUBLISHED)."},
+                        "isReshareDisabledByAuthor": {
+                            "type": "boolean",
+                            "description": "Disable reshares by the author.",
+                        },
+                        "linkedinVersion": {"type": "string", "description": "LinkedIn API version header."},
+                    },
+                    "required": ["author", "images", "commentary"],
                 },
             },
             {
@@ -126,12 +220,32 @@ class MCPServer:
                     ],
                 },
             },
+            {
+                "name": "get_verification_report",
+                "description": "Fetch the LinkedIn verification report for the authenticated member.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "linkedinVersion": {"type": "string", "description": "LinkedIn API version header."},
+                    },
+                },
+            },
+            {
+                "name": "get_userinfo",
+                "description": "Fetch the OpenID Connect userinfo profile.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "linkedinVersion": {"type": "string", "description": "LinkedIn API version header."},
+                    },
+                },
+            },
         ]
 
     async def invoke_tool(self, name: str, args: Dict[str, Any]) -> Any:
         if name == "get_profile":
             return self.client.get_profile()
-        if name == "create_post":
+        if name == "create_text_post":
             return self.client.create_post(
                 author=args.get("author", ""),
                 commentary=args.get("commentary", ""),
@@ -140,6 +254,48 @@ class MCPServer:
                 lifecycle_state=args.get("lifecycleState", "PUBLISHED"),
                 is_reshare_disabled_by_author=args.get("isReshareDisabledByAuthor", False),
                 linkedin_version=args.get("linkedinVersion", "202502"),
+            )
+        if name == "create_reshare":
+            return self.client.create_reshare(
+                author=args.get("author", ""),
+                parent=args.get("parent", ""),
+                commentary=args.get("commentary", ""),
+                visibility=args.get("visibility", "PUBLIC"),
+                distribution=args.get("distribution"),
+                lifecycle_state=args.get("lifecycleState", "PUBLISHED"),
+                is_reshare_disabled_by_author=args.get("isReshareDisabledByAuthor", False),
+                linkedin_version=args.get("linkedinVersion", "202401"),
+            )
+        if name == "initialize_image_upload":
+            return self.client.initialize_image_upload(
+                owner=args.get("owner", ""),
+                linkedin_version=args.get("linkedinVersion", "202401"),
+            )
+        if name == "upload_image_binary":
+            return self.client.upload_image_binary(
+                upload_url=args.get("uploadUrl", ""),
+                file_path=args.get("filePath", ""),
+            )
+        if name == "create_image_post":
+            return self.client.create_image_post(
+                author=args.get("author", ""),
+                image_urn=args.get("imageUrn", ""),
+                commentary=args.get("commentary", ""),
+                alt_text=args.get("altText", ""),
+                visibility=args.get("visibility", "PUBLIC"),
+                lifecycle_state=args.get("lifecycleState", "PUBLISHED"),
+                linkedin_version=args.get("linkedinVersion", "202401"),
+            )
+        if name == "create_multi_image_post":
+            return self.client.create_multi_image_post(
+                author=args.get("author", ""),
+                images=args.get("images") or [],
+                commentary=args.get("commentary", ""),
+                visibility=args.get("visibility", "PUBLIC"),
+                distribution=args.get("distribution"),
+                lifecycle_state=args.get("lifecycleState", "PUBLISHED"),
+                is_reshare_disabled_by_author=args.get("isReshareDisabledByAuthor", False),
+                linkedin_version=args.get("linkedinVersion", "202511"),
             )
         if name == "create_article_post":
             return self.client.create_article_post(
@@ -151,6 +307,14 @@ class MCPServer:
                 visibility=args.get("visibility", "PUBLIC"),
                 distribution=args.get("distribution"),
                 lifecycle_state=args.get("lifecycleState", "PUBLISHED"),
+                linkedin_version=args.get("linkedinVersion", "202502"),
+            )
+        if name == "get_verification_report":
+            return self.client.get_verification_report(
+                linkedin_version=args.get("linkedinVersion", "202510"),
+            )
+        if name == "get_userinfo":
+            return self.client.get_userinfo(
                 linkedin_version=args.get("linkedinVersion", "202502"),
             )
         raise ValueError(f"Unknown tool: {name}")
