@@ -6,9 +6,16 @@ Minimal Model Context Protocol (MCP) server that speaks JSON-over-stdio for use 
 
 > You will need a valid LinkedIn OAuth access token with the appropriate scopes. Tokens are **not** handled here; provide them via env vars.
 
+![LinkedIn MCP Server architecture diagram](resources/architect-diagram.png)
+
 ## Features
 - Get profile
-- Create post
+- Get verification report
+- Get userinfo
+- Create text-only post
+- Create reshare post
+- Create image post (register upload, upload binary, publish)
+- Create multi-image post
 - Create article post
 
 ## Project layout
@@ -86,13 +93,22 @@ startup_timeout_ms = 30000
 Ensure the working directory is this repo (or set `cwd` if supported by your CLI).
 
 ## Exposed tools
-- `get_profile` – fetch current profile
-- `create_post` – create a LinkedIn post
+- `get_profile` – fetch current profile (identityMe)
+- `get_verification_report` – fetch verification report
+- `get_userinfo` – fetch OpenID Connect userinfo profile
+- `create_text_post` – create a text-only LinkedIn post
+- `create_reshare` – reshare an existing LinkedIn post
+- `initialize_image_upload` – register an image upload (returns image URN + upload URL)
+- `upload_image_binary` – upload a local image file to the upload URL
+- `create_image_post` – create a post with a single uploaded image
+- `create_multi_image_post` – create a post with multiple uploaded images
 - `create_article_post` – create a LinkedIn article post with a link
 
 ## Notes
 - This is a lightweight JSON-RPC loop for MCP stdio. Validation is minimal; LinkedIn API errors are returned to the caller.
 - Be mindful of LinkedIn API rate limits and scopes (e.g., r_liteprofile, etc.).
+- If you see a 403 when creating posts or reshares, your access token likely lacks the required scopes or has expired; refresh it with `python -m src.mcp_server --auth`.
+- The current developer tier behavior for posting/resharing has not been tested.
 - No persistence beyond the LinkedIn API itself.
 
 ## Backlog / Future Work
